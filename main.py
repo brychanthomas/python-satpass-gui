@@ -1,5 +1,7 @@
 import tkinter as tk
 from tkcalendar import Calendar, DateEntry
+from orbit_predictor.sources import get_predictor_from_tle_lines
+from orbit_predictor.locations import Location
 import datetime
 
 class MainWindow:
@@ -56,7 +58,7 @@ class MainWindow:
     def displayTableWindow(self, table):
         newWindow = tk.Toplevel(self.master)
         for row in range(len(table)):
-            for col in range(len(table)):
+            for col in range(len(table[0])):
                 cell = tk.Entry(newWindow)
                 cell.insert(tk.END, table[row][col])
                 cell['state'] = tk.DISABLED
@@ -67,25 +69,53 @@ class OrbitManager:
     def __init__(self, satellites):
         self.satellites = satellites
 
-    def predictPasses(self, intDesigs):
+    def predictPasses(self, intDesigs, startTime, daysToPredictFor):
+        card = Location("Cardiff", 55.95, -3.2, 10)
+        endTime = startTime + datetime.timedelta(days=daysToPredictFor)
+        endTime = endTime.replace(hour=0, minute=0)
         passes = []
         for intDes in intDesigs:
+            predictor = get_predictor_from_tle_lines(self.__getTle(intDes))
+            for p in predictor.passes_over(card, startTime):
+                if p.aos > endTime:
+                    break
+                satName = self.satellites[intDes]
+                passDate = p.aos.strftime('%d/%m/%y')
+                aosTime = p.aos.strftime('%H:%M:%S')
+                maxElTime = p.max_elevation_date.strftime('%H:%M:%S')
+                maxEl = round(p.max_elevation_deg, 1)
+                passes.append([satName, passDate, aosTime, maxElTime, maxEl, p.aos])
+        passes = sorted(passes, key=lambda x: x[-1])
+        for p in passes:
+            p.pop()
+        return passes
+                
 
     def updateOrbits(self):
         pass
 
     def __getTle(self, intDes):
-        pass
+        with open('TLEs\\'+intDes+'.tle', 'r') as file:
+            tle = file.read().split('\n')[:2]
+            file.close()
+        return tle
 
     def __updateTle(self, intDes):
         pass
             
 def p():
-    window.displayTableWindow([['AB','AC'], ['KE','VZ']])
+    a = OrbitManager({'2013':'satellite name'})
+    if window.getStartDate() == datetime.datetime.today().date():
+        startTime = datetime.datetime.utcnow()
+    else:
+        midnight = datetime.datetime.min.time()
+        startTime = datetime.datetime.combine(window.getStartDate(), midnight)
+    passes = a.predictPasses(window.getSelectedSats(), startTime, window.getDaysToPredictFor())
+    window.displayTableWindow(passes)
 
 def u():
     print("Update")
     
 root = tk.Tk()
-window = MainWindow(root, {'AM':'NOAA-19', 'Stalin':'Meteor M2', 'SSI':'ISS'}, p, u)
+window = MainWindow(root, {'2013':'satellite name'}, p, u)
 root.mainloop()
