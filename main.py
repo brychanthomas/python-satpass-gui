@@ -3,6 +3,7 @@ from tkcalendar import Calendar, DateEntry
 from orbit_predictor.sources import get_predictor_from_tle_lines
 from orbit_predictor.locations import Location
 import datetime
+import json
 
 class MainWindow:
     def __init__(self, master, satellites, predictCallback, updateCallback):
@@ -60,6 +61,7 @@ class MainWindow:
         for row in range(len(table)):
             for col in range(len(table[0])):
                 cell = tk.Entry(newWindow)
+                cell.configure({"disabledforeground":"black"})
                 cell.insert(tk.END, table[row][col])
                 cell['state'] = tk.DISABLED
                 cell.grid(row=row, column=col)
@@ -90,7 +92,6 @@ class OrbitManager:
             p.pop()
         return passes
                 
-
     def updateOrbits(self):
         pass
 
@@ -102,20 +103,27 @@ class OrbitManager:
 
     def __updateTle(self, intDes):
         pass
-            
-def p():
-    a = OrbitManager({'2013':'satellite name'})
-    if window.getStartDate() == datetime.datetime.today().date():
-        startTime = datetime.datetime.utcnow()
-    else:
-        midnight = datetime.datetime.min.time()
-        startTime = datetime.datetime.combine(window.getStartDate(), midnight)
-    passes = a.predictPasses(window.getSelectedSats(), startTime, window.getDaysToPredictFor())
-    window.displayTableWindow(passes)
 
-def u():
-    print("Update")
+class Controller:
+    def __init__(self):
+        with open('satellites.json', 'r') as file:
+            satellites = json.loads(file.read())
+            file.close()
+        root = tk.Tk()
+        self.view = MainWindow(root, satellites, self.predictPressed, self.updatePressed)
+        self.model = OrbitManager(satellites)
+        root.mainloop()
+
+    def predictPressed(self):
+        if self.view.getStartDate() == datetime.datetime.today().date():
+            startTime = datetime.datetime.utcnow()
+        else:
+            midnight = datetime.datetime.min.time()
+            startTime = datetime.datetime.combine(window.getStartDate(), midnight)
+        passes = self.model.predictPasses(self.view.getSelectedSats(), startTime, self.view.getDaysToPredictFor())
+        self.view.displayTableWindow(passes)
+
+    def updatePressed(self):
+        print("update")
     
-root = tk.Tk()
-window = MainWindow(root, {'2013':'satellite name'}, p, u)
-root.mainloop()
+c = Controller()
