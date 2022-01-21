@@ -4,6 +4,7 @@ from orbit_predictor.sources import get_predictor_from_tle_lines
 from orbit_predictor.locations import Location
 import datetime
 import json
+import requests
 
 class MainWindow:
     def __init__(self, master, satellites, predictCallback, updateCallback):
@@ -36,8 +37,10 @@ class MainWindow:
         self.daysEntry.insert(0, '7')
         self.daysEntry.grid(column=2, row=2)
 
-        tk.Button(self.master, text="Update orbits", command=self.updateCallback).grid(column=3, row=1)
-        tk.Button(self.master, text="Predict passes", command=self.predictCallback).grid(column=3, row=3)
+        self.updateButton = tk.Button(self.master, text="Update orbits", command=self.updateCallback)
+        self.updateButton.grid(column=3, row=1)
+        self.predictButton = tk.Button(self.master, text="Predict passes", command=self.predictCallback)
+        self.predictButton.grid(column=3, row=3)
 
         master.grid_columnconfigure(0, minsize=150)
         master.grid_columnconfigure(2, minsize=150)
@@ -67,6 +70,14 @@ class MainWindow:
                 cell.grid(row=row, column=col)
         tk.Button(newWindow, text='Close', command=newWindow.destroy).grid()
 
+    def setButtonsEnabled(self, enabled):
+        if enabled:
+            self.predictButton['state'] = tk.NORMAL
+            self.updateButton['state'] = tk.NORMAL
+        else:
+            self.predictButton['state'] = tk.DISABLED
+            self.updateButton['state'] = tk.DISABLED
+
 class OrbitManager:
     def __init__(self, satellites):
         self.satellites = satellites
@@ -93,7 +104,8 @@ class OrbitManager:
         return passes
                 
     def updateOrbits(self):
-        pass
+        for intDes in self.satellites.keys():
+            self.__updateTle(intDes)
 
     def __getTle(self, intDes):
         with open('TLEs\\'+intDes+'.tle', 'r') as file:
@@ -102,7 +114,15 @@ class OrbitManager:
         return tle
 
     def __updateTle(self, intDes):
-        pass
+        req = requests.get('https://celestrak.com/satcat/tle.php?INTDES='+intDes)
+        if req.status_code != 200:
+            print ("Error fetching TLE for "+intDes)
+            return
+        tle = req.text.replace('\r','').split('\n')[1:3]
+        with open('TLEs\\'+intDes+'.tle', 'w') as file:
+            file.write('\n'.join(tle))
+            file.close()
+            
 
 class Controller:
     def __init__(self):
@@ -124,6 +144,8 @@ class Controller:
         self.view.displayTableWindow(passes)
 
     def updatePressed(self):
-        print("update")
+        self.view.setButtonsEnabled(False)
+        self.model.updateOrbits()
+        self.view.setButtonsEnabled(True)
     
 c = Controller()
