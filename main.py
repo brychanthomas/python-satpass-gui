@@ -20,7 +20,7 @@ class MainWindow:
             checkbox.grid(column=0, sticky='W')
             self.satCheckboxVars.append(var)
 
-        tk.Label(master, text='Dates:').grid(column=2, row=0)
+        tk.Label(master, text='Parameters:').grid(column=2, row=0)
         tk.Label(master, text='Start date:').grid(column=1, row=1, sticky='E')
         self.dateEntry = DateEntry(master, date_pattern='dd/MM/yyyy')
         self.dateEntry.grid(column=2, row=1)
@@ -37,6 +37,11 @@ class MainWindow:
         self.daysEntry.insert(0, '7')
         self.daysEntry.grid(column=2, row=2)
 
+        tk.Label(master, text='Max elevation at least:').grid(column=1, row=3, sticky='E')
+        self.elevationEntry = tk.Entry(master, validate='key', vcmd=vcmd, width=2)
+        self.elevationEntry.insert(0, '10')
+        self.elevationEntry.grid(column=2, row=3)
+
         self.updateButton = tk.Button(self.master, text="Update orbits", command=self.updateCallback)
         self.updateButton.grid(column=3, row=1)
         self.predictButton = tk.Button(self.master, text="Predict passes", command=self.predictCallback)
@@ -52,6 +57,9 @@ class MainWindow:
     def getDaysToPredictFor(self):
         return int(self.daysEntry.get())
 
+    def getMaxElevation(self):
+        return int(self.elevationEntry.get())
+
     def getSelectedSats(self):
         sats = []
         for c in self.satCheckboxVars:
@@ -61,14 +69,30 @@ class MainWindow:
     
     def displayTableWindow(self, table):
         newWindow = tk.Toplevel(self.master)
+        canvas = tk.Canvas(newWindow)
+        frame = tk.Frame(canvas)
+        scrollbar = tk.Scrollbar(newWindow, orient="vertical", command=canvas.yview)
+        canvas.configure(yscrollcommand=scrollbar.set)
+        scrollbar.pack(side="right", fill="y")
+        canvas.pack(side="left", fill="both", expand=True)
+        canvas.create_window((4,4), window=frame, anchor="nw")
+        frame.bind("<Configure>", lambda event: canvas.configure(scrollregion=canvas.bbox("all")))
         for row in range(len(table)):
             for col in range(len(table[0])):
-                cell = tk.Entry(newWindow)
+                if row == 0:
+                    cell = tk.Entry(frame, width=14, font='Helevica 12 bold')
+                else:
+                    cell = tk.Entry(frame, width=14)
                 cell.configure({"disabledforeground":"black"})
                 cell.insert(tk.END, table[row][col])
                 cell['state'] = tk.DISABLED
                 cell.grid(row=row, column=col)
-        tk.Button(newWindow, text='Close', command=newWindow.destroy).grid()
+        csv = '\n'.join(map(lambda p: ','.join(p), table))
+        def copyCsv():
+            newWindow.clipboard_clear()
+            newWindow.clipboard_append(csv)
+        tk.Button(newWindow, text='Copy CSV', command=copyCsv).pack(side="top")
+        tk.Button(newWindow, text='Close', command=newWindow.destroy).pack(side="bottom")
 
     def setButtonsEnabled(self, enabled):
         if enabled:
@@ -82,7 +106,7 @@ class OrbitManager:
     def __init__(self, satellites):
         self.satellites = satellites
 
-    def predictPasses(self, intDesigs, startTime, daysToPredictFor):
+    def predictPasses(self, intDesigs, startTime, daysToPredictFor, maxElevationAtLeast):
         card = Location("Cardiff", 55.95, -3.2, 10)
         endTime = startTime + datetime.timedelta(days=daysToPredictFor)
         endTime = endTime.replace(hour=0, minute=0)
@@ -92,15 +116,18 @@ class OrbitManager:
             for p in predictor.passes_over(card, startTime):
                 if p.aos > endTime:
                     break
-                satName = self.satellites[intDes]
-                passDate = p.aos.strftime('%d/%m/%y')
-                aosTime = p.aos.strftime('%H:%M:%S')
-                maxElTime = p.max_elevation_date.strftime('%H:%M:%S')
-                maxEl = round(p.max_elevation_deg, 1)
-                passes.append([satName, passDate, aosTime, maxElTime, maxEl, p.aos])
+                if p.max_elevation_deg >= maxElevationAtLeast:
+                    satName = self.satellites[intDes]
+                    passDate = p.aos.strftime('%d/%m/%y')
+                    aosTime = p.aos.strftime('%H:%M:%S')
+                    maxElTime = p.max_elevation_date.strftime('%H:%M:%S')
+                    maxEl = round(p.max_elevation_deg, 1)
+                    duration = str(round(p.duration_s//60))+':'+str(round(p.duration_s%60)).zfill(2)
+                    passes.append([satName, passDate, aosTime, maxElTime, str(maxEl), duration, p.aos])
         passes = sorted(passes, key=lambda x: x[-1])
         for p in passes:
             p.pop()
+        passes.insert(0, ['Name', 'Date', 'Start time', 'Max el. time', 'Max el. (°)', 'Duration'])
         return passes
                 
     def updateOrbits(self):
@@ -130,6 +157,9 @@ class Controller:
             satellites = json.loads(file.read())
             file.close()
         root = tk.Tk()
+        defaultFont = tk.font.nametofont("TkDefaultFont")
+        defaultFont.configure(size=12)
+        root.option_add("*Font", defaultFont)
         self.view = MainWindow(root, satellites, self.predictPressed, self.updatePressed)
         self.model = OrbitManager(satellites)
         root.mainloop()
@@ -140,7 +170,7 @@ class Controller:
         else:
             midnight = datetime.datetime.min.time()
             startTime = datetime.datetime.combine(window.getStartDate(), midnight)
-        passes = self.model.predictPasses(self.view.getSelectedSats(), startTime, self.view.getDaysToPredictFor())
+        passes = self.model.predictPasses(self.view.getSelectedSats(), startTime, self.view.getDaysToPredictFor(), self.view.getMaxElevation())
         self.view.displayTableWindow(passes)
 
     def updatePressed(self):
