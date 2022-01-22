@@ -61,9 +61,11 @@ class MainWindow:
         tk.Label(text='Latitude:').grid(column=1, row=6, sticky='E')
         self.latEntry = tk.Entry(master, width=11)
         self.latEntry.grid(column=2, row=6)
+        self.latEntry.insert(0, 51.4816546)
         tk.Label(text='Longitude:').grid(column=1, row=7, sticky='E')
         self.lngEntry = tk.Entry(master, width=11)
         self.lngEntry.grid(column=2, row=7)
+        self.lngEntry.insert(0, -3.1791934)
 
         self.updateButton = tk.Button(self.master, text="Update orbits", command=self.updateCallback)
         self.updateButton.grid(column=3, row=1)
@@ -82,6 +84,12 @@ class MainWindow:
 
     def getMaxElevation(self):
         return int(self.elevationEntry.get())
+
+    def getLatitude(self):
+        return float(self.latEntry.get())
+
+    def getLongitude(self):
+        return float(self.lngEntry.get())
 
     def getSelectedSats(self):
         sats = []
@@ -129,21 +137,21 @@ class OrbitManager:
     def __init__(self, satellites):
         self.satellites = satellites
 
-    def predictPasses(self, intDesigs, startTime, daysToPredictFor, maxElevationAtLeast):
-        card = Location("Cardiff", 55.95, -3.2, 10)
+    def predictPasses(self, intDesigs, startTime, daysToPredictFor, maxElevationAtLeast, lat, lng):
+        loc = Location("location", lat, lng, 10)
         endTime = startTime + datetime.timedelta(days=daysToPredictFor)
         endTime = endTime.replace(hour=0, minute=0)
         passes = []
         for intDes in intDesigs:
             predictor = get_predictor_from_tle_lines(self.__getTle(intDes))
-            for p in predictor.passes_over(card, startTime):
+            for p in predictor.passes_over(loc, startTime):
                 if p.aos > endTime:
                     break
                 if p.max_elevation_deg >= maxElevationAtLeast:
                     satName = self.satellites[intDes]
-                    passDate = p.aos.strftime('%d/%m/%y')
-                    aosTime = p.aos.strftime('%H:%M:%S')
-                    maxElTime = p.max_elevation_date.strftime('%H:%M:%S')
+                    passDate = p.aos.astimezone(None).strftime('%d/%m/%y')
+                    aosTime = p.aos.astimezone(None).strftime('%H:%M:%S')
+                    maxElTime = p.max_elevation_date.astimezone(None).strftime('%H:%M:%S')
                     maxEl = round(p.max_elevation_deg, 1)
                     duration = str(round(p.duration_s//60))+':'+str(round(p.duration_s%60)).zfill(2)
                     passes.append([satName, passDate, aosTime, maxElTime, str(maxEl), duration, p.aos])
@@ -192,8 +200,8 @@ class Controller:
             startTime = datetime.datetime.utcnow()
         else:
             midnight = datetime.datetime.min.time()
-            startTime = datetime.datetime.combine(window.getStartDate(), midnight)
-        passes = self.model.predictPasses(self.view.getSelectedSats(), startTime, self.view.getDaysToPredictFor(), self.view.getMaxElevation())
+            startTime = datetime.datetime.combine(self.view.getStartDate(), midnight)
+        passes = self.model.predictPasses(self.view.getSelectedSats(), startTime, self.view.getDaysToPredictFor(), self.view.getMaxElevation(), self.view.getLatitude(), self.view.getLongitude())
         self.view.displayTableWindow(passes)
 
     def updatePressed(self):
