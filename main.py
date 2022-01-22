@@ -42,6 +42,29 @@ class MainWindow:
         self.elevationEntry.insert(0, '10')
         self.elevationEntry.grid(column=2, row=3)
 
+        tk.Label(master, text='Location:').grid(column=1, row=4, sticky='E')
+        self.locationEntry = tk.Entry(master)
+        self.locationEntry.grid(column=2, row=4)
+        def getLatLng():
+            if len(self.locationEntry.get()) < 2:
+                return
+            r = requests.get('https://nominatim.openstreetmap.org/search?format=json&q='+self.locationEntry.get())
+            loc = json.loads(r.text)[0]
+            self.locationEntry.delete(0, 'end')
+            self.locationEntry.insert(0, loc['display_name'])
+            self.latEntry.delete(0, 'end')
+            self.latEntry.insert(0, loc['lat'])
+            self.lngEntry.delete(0, 'end')
+            self.lngEntry.insert(0, loc['lon'])
+        tk.Button(text='Get coordinates', command=getLatLng).grid(column=2, row=5)
+
+        tk.Label(text='Latitude:').grid(column=1, row=6, sticky='E')
+        self.latEntry = tk.Entry(master, width=11)
+        self.latEntry.grid(column=2, row=6)
+        tk.Label(text='Longitude:').grid(column=1, row=7, sticky='E')
+        self.lngEntry = tk.Entry(master, width=11)
+        self.lngEntry.grid(column=2, row=7)
+
         self.updateButton = tk.Button(self.master, text="Update orbits", command=self.updateCallback)
         self.updateButton.grid(column=3, row=1)
         self.predictButton = tk.Button(self.master, text="Predict passes", command=self.predictCallback)
