@@ -42,9 +42,18 @@ class MainWindow:
         self.elevationEntry.insert(0, '10')
         self.elevationEntry.grid(column=2, row=3)
 
-        tk.Label(master, text='Location:').grid(column=1, row=4, sticky='E')
+        tk.Label(master, text='After hour:').grid(column=1, row=4, sticky='E')
+        self.afterHourEntry = tk.Entry(master, validate='key', vcmd=vcmd, width=2)
+        self.afterHourEntry.grid(column=2, row=4)
+        self.afterHourEntry.insert(0, '0')
+        tk.Label(master, text='Before hour:').grid(column=1, row=5, sticky='E')
+        self.beforeHourEntry = tk.Entry(master, validate='key', vcmd=vcmd, width=2)
+        self.beforeHourEntry.grid(column=2, row=5)
+        self.beforeHourEntry.insert(0, '24')
+        
+        tk.Label(master, text='Location:').grid(column=1, row=6, sticky='E')
         self.locationEntry = tk.Entry(master)
-        self.locationEntry.grid(column=2, row=4)
+        self.locationEntry.grid(column=2, row=6)
         def getLatLng():
             if len(self.locationEntry.get()) < 2:
                 return
@@ -56,15 +65,15 @@ class MainWindow:
             self.latEntry.insert(0, loc['lat'])
             self.lngEntry.delete(0, 'end')
             self.lngEntry.insert(0, loc['lon'])
-        tk.Button(text='Get coordinates', command=getLatLng).grid(column=2, row=5)
+        tk.Button(text='Get coordinates', command=getLatLng).grid(column=2, row=7)
 
-        tk.Label(text='Latitude:').grid(column=1, row=6, sticky='E')
+        tk.Label(text='Latitude:').grid(column=1, row=8, sticky='E')
         self.latEntry = tk.Entry(master, width=11)
-        self.latEntry.grid(column=2, row=6)
+        self.latEntry.grid(column=2, row=8)
         self.latEntry.insert(0, 51.4816546)
-        tk.Label(text='Longitude:').grid(column=1, row=7, sticky='E')
+        tk.Label(text='Longitude:').grid(column=1, row=9, sticky='E')
         self.lngEntry = tk.Entry(master, width=11)
-        self.lngEntry.grid(column=2, row=7)
+        self.lngEntry.grid(column=2, row=9)
         self.lngEntry.insert(0, -3.1791934)
 
         self.updateButton = tk.Button(self.master, text="Update orbits", command=self.updateCallback)
@@ -100,6 +109,7 @@ class MainWindow:
     
     def displayTableWindow(self, table):
         newWindow = tk.Toplevel(self.master)
+        newWindow.geometry("740x500")
         canvas = tk.Canvas(newWindow)
         frame = tk.Frame(canvas)
         scrollbar = tk.Scrollbar(newWindow, orient="vertical", command=canvas.yview)
@@ -111,9 +121,9 @@ class MainWindow:
         for row in range(len(table)):
             for col in range(len(table[0])):
                 if row == 0:
-                    cell = tk.Entry(frame, width=14, font='Helevica 12 bold')
+                    cell = tk.Entry(frame, width=11, font='Helevica 12 bold')
                 else:
-                    cell = tk.Entry(frame, width=14)
+                    cell = tk.Entry(frame, width=11)
                 cell.configure({"disabledforeground":"black"})
                 cell.insert(tk.END, table[row][col])
                 cell['state'] = tk.DISABLED
