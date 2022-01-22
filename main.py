@@ -100,6 +100,12 @@ class MainWindow:
     def getLongitude(self):
         return float(self.lngEntry.get())
 
+    def getAfterHour(self):
+        return int(self.afterHourEntry.get())
+
+    def getBeforeHour(self):
+        return int(self.beforeHourEntry.get())
+
     def getSelectedSats(self):
         sats = []
         for c in self.satCheckboxVars:
@@ -147,7 +153,7 @@ class OrbitManager:
     def __init__(self, satellites):
         self.satellites = satellites
 
-    def predictPasses(self, intDesigs, startTime, daysToPredictFor, maxElevationAtLeast, lat, lng):
+    def predictPasses(self, intDesigs, startTime, daysToPredictFor, maxElevationAtLeast, lat, lng, minHour, maxHour):
         loc = Location("location", lat, lng, 10)
         endTime = startTime + datetime.timedelta(days=daysToPredictFor)
         endTime = endTime.replace(hour=0, minute=0)
@@ -157,7 +163,8 @@ class OrbitManager:
             for p in predictor.passes_over(loc, startTime):
                 if p.aos > endTime:
                     break
-                if p.max_elevation_deg >= maxElevationAtLeast:
+                hour = p.max_elevation_date.astimezone(None).hour
+                if p.max_elevation_deg >= maxElevationAtLeast and hour >= minHour and hour <=maxHour:
                     satName = self.satellites[intDes]
                     passDate = p.aos.astimezone(None).strftime('%d/%m/%y')
                     aosTime = p.aos.astimezone(None).strftime('%H:%M:%S')
@@ -211,7 +218,9 @@ class Controller:
         else:
             midnight = datetime.datetime.min.time()
             startTime = datetime.datetime.combine(self.view.getStartDate(), midnight)
-        passes = self.model.predictPasses(self.view.getSelectedSats(), startTime, self.view.getDaysToPredictFor(), self.view.getMaxElevation(), self.view.getLatitude(), self.view.getLongitude())
+        passes = self.model.predictPasses(self.view.getSelectedSats(), startTime, self.view.getDaysToPredictFor(),
+                                          self.view.getMaxElevation(), self.view.getLatitude(), self.view.getLongitude(),
+                                          self.view.getAfterHour(), self.view.getBeforeHour())
         self.view.displayTableWindow(passes)
 
     def updatePressed(self):
