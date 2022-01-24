@@ -114,7 +114,7 @@ class MainWindow:
     def getBeforeHour(self):
         return int(self.beforeHourEntry.get())
 
-    #get the satellites selected by the user as a list of international designation strings
+    #get the satellites selected by the user as a list of international designator strings
     def getSelectedSats(self):
         sats = []
         for c in self.satCheckboxVars:
@@ -160,10 +160,12 @@ class MainWindow:
             self.predictButton['state'] = tk.DISABLED
             self.updateButton['state'] = tk.DISABLED
 
+#class to predict satellite passes and retrieve TLEs
 class OrbitManager:
     def __init__(self, satellites):
         self.satellites = satellites
 
+    #predict passes for specified satellits from specified start time. Returns them as a 2D array
     def predictPasses(self, intDesigs, startTime, daysToPredictFor, maxElevationAtLeast, lat, lng, minHour, maxHour):
         loc = Location("location", lat, lng, 10)
         endTime = startTime + datetime.timedelta(days=daysToPredictFor)
@@ -172,9 +174,10 @@ class OrbitManager:
         for intDes in intDesigs:
             predictor = get_predictor_from_tle_lines(self.__getTle(intDes))
             for p in predictor.passes_over(loc, startTime):
-                if p.aos > endTime:
+                if p.aos > endTime: #if passed end of prediction interval
                     break
                 hour = p.max_elevation_date.astimezone(None).hour
+                #if pass satisfies MEL and time requirements, add it to the table
                 if p.max_elevation_deg >= maxElevationAtLeast and hour >= minHour and hour <=maxHour:
                     satName = self.satellites[intDes]
                     passDate = p.aos.astimezone(None).strftime('%d/%m/%y')
@@ -183,22 +186,25 @@ class OrbitManager:
                     maxEl = round(p.max_elevation_deg, 1)
                     duration = str(round(p.duration_s//60))+':'+str(round(p.duration_s%60)).zfill(2)
                     passes.append([satName, passDate, aosTime, maxElTime, str(maxEl), duration, p.aos])
-        passes = sorted(passes, key=lambda x: x[-1])
+        passes = sorted(passes, key=lambda x: x[-1]) #sort by start time
         for p in passes:
             p.pop()
         passes.insert(0, ['Name', 'Date', 'Start time', 'Max el. time', 'Max el. (°)', 'Duration'])
         return passes
-                
+
+    #update TLEs for all satellites
     def updateOrbits(self):
         for intDes in self.satellites.keys():
             self.__updateTle(intDes)
 
+    #download a TLE for a specific international designator from Celestrak
     def __getTle(self, intDes):
         with open('TLEs\\'+intDes+'.tle', 'r') as file:
             tle = file.read().split('\n')[:2]
             file.close()
         return tle
 
+    #download a TLE for a specific international designator from Celestrak
     def __updateTle(self, intDes):
         req = requests.get('https://celestrak.com/satcat/tle.php?INTDES='+intDes)
         if req.status_code != 200:
@@ -209,10 +215,10 @@ class OrbitManager:
             file.write('\n'.join(tle))
             file.close()
             
-
+#class to actually run the application
 class Controller:
     def __init__(self):
-        with open('satellites.json', 'r') as file:
+        with open('satellites.json', 'r') as file: #load satellites from file
             satellites = json.loads(file.read())
             file.close()
         root = tk.Tk()
@@ -223,7 +229,9 @@ class Controller:
         self.model = OrbitManager(satellites)
         root.mainloop()
 
+    #callback when predict button pressed
     def predictPressed(self):
+        #if start day is today, set start time to now, otherwise set it to 00:00
         if self.view.getStartDate() == datetime.datetime.today().date():
             startTime = datetime.datetime.utcnow()
         else:
@@ -234,6 +242,7 @@ class Controller:
                                           self.view.getAfterHour(), self.view.getBeforeHour())
         self.view.displayTableWindow(passes)
 
+    #callback when update button pressed
     def updatePressed(self):
         self.view.setButtonsEnabled(False)
         self.model.updateOrbits()
