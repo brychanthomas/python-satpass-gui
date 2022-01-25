@@ -5,6 +5,7 @@ from orbit_predictor.locations import Location
 import datetime
 import json
 import requests
+from time import sleep
 
 #class to create and manage UI
 class MainWindow:
@@ -57,7 +58,9 @@ class MainWindow:
         self.locationEntry.grid(column=2, row=6)
         def getLatLng(): #function to retrieve latitude and longitude from OSM based on user location
             if len(self.locationEntry.get()) < 2:
+                self.displayStatusMessage('Must enter location first')
                 return
+            self.displayStatusMessage('Loading from OSM...')
             r = requests.get('https://nominatim.openstreetmap.org/search?format=json&q='+self.locationEntry.get())
             loc = json.loads(r.text)[0]
             self.locationEntry.delete(0, 'end')
@@ -66,6 +69,7 @@ class MainWindow:
             self.latEntry.insert(0, loc['lat'])
             self.lngEntry.delete(0, 'end')
             self.lngEntry.insert(0, loc['lon'])
+            self.displayStatusMessage('Done.')
         tk.Button(text='Get coordinates', command=getLatLng).grid(column=2, row=7) #button to get coordinates from location
 
         tk.Label(text='Latitude:').grid(column=1, row=8, sticky='E')
@@ -81,6 +85,9 @@ class MainWindow:
         self.updateButton.grid(column=3, row=1) #button to update TLEs
         self.predictButton = tk.Button(self.master, text="Predict passes", command=self.predictCallback)
         self.predictButton.grid(column=3, row=3) #button to predict passes
+
+        self.statusLabel = tk.Label(self.master, text='')
+        self.statusLabel.grid(column=3, row=5)
 
         master.grid_columnconfigure(0, minsize=150)
         master.grid_columnconfigure(2, minsize=150)
@@ -159,6 +166,11 @@ class MainWindow:
         else:
             self.predictButton['state'] = tk.DISABLED
             self.updateButton['state'] = tk.DISABLED
+
+    #display a message below the buttons
+    def displayStatusMessage(self, message):
+        self.statusLabel.config(text=message)
+        self.statusLabel.update()
 
 #class to predict satellite passes and retrieve TLEs
 class OrbitManager:
@@ -245,7 +257,10 @@ class Controller:
     #callback when update button pressed
     def updatePressed(self):
         self.view.setButtonsEnabled(False)
+        self.view.displayStatusMessage('Loading from Celestrak...')
         self.model.updateOrbits()
         self.view.setButtonsEnabled(True)
+        self.view.displayStatusMessage('Done')
+
     
 c = Controller()
