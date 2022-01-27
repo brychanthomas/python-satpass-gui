@@ -22,6 +22,8 @@ class MainWindow:
             checkbox.grid(column=0, sticky='W')
             self.satCheckboxVars.append(var)
 
+        master.title("Pass predictor")
+
         tk.Label(master, text='Parameters:').grid(column=2, row=0)
         tk.Label(master, text='Start date:').grid(column=1, row=1, sticky='E') #add start date entry
         self.dateEntry = DateEntry(master, date_pattern='dd/MM/yyyy')
@@ -133,6 +135,7 @@ class MainWindow:
     def displayTableWindow(self, table):
         newWindow = tk.Toplevel(self.master)
         newWindow.geometry("740x500")
+        newWindow.title("Predictions")
         canvas = tk.Canvas(newWindow) #elements must be embedded in a canvas to get scrollbar
         frame = tk.Frame(canvas)
         scrollbar = tk.Scrollbar(newWindow, orient="vertical", command=canvas.yview)
