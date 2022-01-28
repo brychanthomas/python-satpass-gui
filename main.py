@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkcalendar import Calendar, DateEntry
+from tkinter import messagebox
 from orbit_predictor.sources import get_predictor_from_tle_lines
 from orbit_predictor.locations import Location
 import datetime
@@ -175,6 +176,9 @@ class MainWindow:
         self.statusLabel.config(text=message)
         self.statusLabel.update()
 
+    def displayWarning(self, message):
+        messagebox.showwarning("Warning", message)
+
 #class to predict satellite passes and retrieve TLEs
 class OrbitManager:
     def __init__(self, satellites):
@@ -206,6 +210,18 @@ class OrbitManager:
             p.pop()
         passes.insert(0, ['Name', 'Date', 'Start time', 'Max el. time', 'Max el. (°)', 'Duration'])
         return passes
+
+    #takes a list of international designators, and returns all of the names whose TLEs
+    #haven't been updated in more than 2 weeks
+    def getOutdatedSats(self, intDesigs):
+        outdated = []
+        for intDes in intDesigs:
+            tle = self.__getTle(intDes)
+            updatedDate = int(tle[0][18:20])*365 + int(tle[0][20:23]) #get updated date as days since 01/01/2000
+            today = (datetime.datetime.now().year-2000) * 365 + datetime.datetime.now().timetuple().tm_yday
+            if today - updatedDate >= 14:
+                outdated.append(self.satellites[intDes])
+        return outdated
 
     #update TLEs for all satellites
     def updateOrbits(self):
@@ -247,15 +263,29 @@ class Controller:
     #callback when predict button pressed
     def predictPressed(self):
         #if start day is today, set start time to now, otherwise set it to 00:00
+        sats = self.view.getSelectedSats()
         if self.view.getStartDate() == datetime.datetime.today().date():
             startTime = datetime.datetime.utcnow()
         else:
             midnight = datetime.datetime.min.time()
             startTime = datetime.datetime.combine(self.view.getStartDate(), midnight)
-        passes = self.model.predictPasses(self.view.getSelectedSats(), startTime, self.view.getDaysToPredictFor(),
+        passes = self.model.predictPasses(sats, startTime, self.view.getDaysToPredictFor(),
                                           self.view.getMaxElevation(), self.view.getLatitude(), self.view.getLongitude(),
                                           self.view.getAfterHour(), self.view.getBeforeHour())
         self.view.displayTableWindow(passes)
+        outdated = self.model.getOutdatedSats(sats)
+        if len(outdated) > 0:
+            if len(outdated) == 1:
+                message = "TLE for "
+                message += outdated[0]
+                message += ' is '
+            else:
+                message = "TLEs for "
+                message += ', '.join(outdated[:-1])
+                message += ' and ' + outdated[-1]
+                message += ' are '
+            message += 'more than two weeks out of date!'
+            self.view.displayWarning(message)
 
     #callback when update button pressed
     def updatePressed(self):
