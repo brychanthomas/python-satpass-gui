@@ -9,7 +9,7 @@ import requests
 from time import sleep
 
 #class to create and manage UI
-class MainWindow:
+class UserInterface:
     def __init__(self, master, satellites, predictCallback, updateCallback):
         self.master = master
         self.predictCallback = predictCallback
@@ -256,7 +256,7 @@ class Controller:
         defaultFont = tk.font.nametofont("TkDefaultFont")
         defaultFont.configure(size=12)
         root.option_add("*Font", defaultFont)
-        self.view = MainWindow(root, satellites, self.predictPressed, self.updatePressed)
+        self.view = UserInterface(root, satellites, self.predictPressed, self.updatePressed)
         self.model = OrbitManager(satellites)
         root.mainloop()
 
