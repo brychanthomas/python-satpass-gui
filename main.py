@@ -6,7 +6,6 @@ from orbit_predictor.locations import Location
 import datetime
 import json
 import requests
-from time import sleep
 
 #class to create and manage UI
 class UserInterface:
@@ -92,7 +91,7 @@ class UserInterface:
         self.statusLabel = tk.Label(self.master, text='')
         self.statusLabel.grid(column=3, row=5)
 
-        master.grid_columnconfigure(0, minsize=150)
+        master.grid_columnconfigure(0, minsize=150) #set minimum width of columns
         master.grid_columnconfigure(2, minsize=150)
         master.grid_columnconfigure(3, minsize=150)
 
@@ -228,7 +227,7 @@ class OrbitManager:
         for intDes in self.satellites.keys():
             self.__updateTle(intDes)
 
-    #download a TLE for a specific international designator from Celestrak
+    #load a TLE for a specific international designator from file
     def __getTle(self, intDes):
         with open('TLEs\\'+intDes+'.tle', 'r') as file:
             tle = file.read().split('\n')[:2]
