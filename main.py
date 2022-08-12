@@ -197,10 +197,11 @@ class OrbitManager:
                 hour = p.max_elevation_date.astimezone(None).hour
                 #if pass satisfies MEL and time requirements, add it to the table
                 if p.max_elevation_deg >= maxElevationAtLeast and hour >= minHour and hour <=maxHour:
+                    utc = datetime.timezone.utc
                     satName = self.satellites[intDes]
-                    passDate = p.aos.astimezone(None).strftime('%d/%m/%y')
-                    aosTime = p.aos.astimezone(None).strftime('%H:%M:%S')
-                    maxElTime = p.max_elevation_date.astimezone(None).strftime('%H:%M:%S')
+                    passDate = p.aos.replace(tzinfo=utc).astimezone().strftime('%d/%m/%y')
+                    aosTime = p.aos.replace(tzinfo=utc).astimezone().strftime('%H:%M:%S')
+                    maxElTime = p.max_elevation_date.replace(tzinfo=utc).astimezone().strftime('%H:%M:%S')
                     maxEl = round(p.max_elevation_deg, 1)
                     duration = str(round(p.duration_s//60))+':'+str(round(p.duration_s%60)).zfill(2)
                     passes.append([satName, passDate, aosTime, maxElTime, str(maxEl), duration, p.aos])
