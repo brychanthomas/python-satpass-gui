@@ -236,9 +236,10 @@ class OrbitManager:
 
     #download a TLE for a specific international designator from Celestrak
     def __updateTle(self, intDes):
-        req = requests.get('https://celestrak.com/satcat/tle.php?INTDES='+intDes)
+        req = requests.get('https://celestrak.org/NORAD/elements/gp.php?INTDES='+intDes)
         if req.status_code != 200:
             print ("Error fetching TLE for "+intDes)
+            print(req.status_code)
             return
         tle = req.text.replace('\r','').split('\n')[1:3]
         with open('TLEs\\'+intDes+'.tle', 'w') as file:
